@@ -274,8 +274,9 @@ def get_pretrained_cfg(model: str, tag: str):
     model_pretrained = _PRETRAINED[model]
     return model_pretrained.get(_clean_tag(tag), {})
 
-
+# def get_pretrained_mean_std(model: str, tag: str):
 def get_pretrained_url(model: str, tag: str):
+    ##
     cfg = get_pretrained_cfg(model, _clean_tag(tag))
     return cfg.get('url', '')
 

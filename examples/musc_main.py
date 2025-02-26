@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.append(os.getcwd())
 from models.musc import MuSc
-from utils.load_config import load_yaml
+from utils.load_config import load_yaml #this related to xFormers 
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -78,11 +78,15 @@ def load_args(cfg, args):
     return cfg
 
 if __name__ == "__main__":
+    
+    # Load the configuration file
     args = get_args()
     cfg = load_yaml(args.config)
     cfg = load_args(cfg, args)
     print(cfg)
     seed = 42
+    
+    # Run the main function of the MuSc model
     model = MuSc(cfg, seed=seed)
     model.main()
 

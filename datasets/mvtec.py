@@ -92,12 +92,14 @@ class MVTecDataset(torch.utils.data.Dataset):
             sub_id_list.extend(sub_list)
 
         return [full_datasets[id] for id in sub_id_list]
-
+    
+    # 需要了解功能
     def __getitem__(self, idx):
         classname, anomaly, image_path, mask_path = self.data_to_iterate[idx]
         image = PIL.Image.open(image_path).convert("RGB")
         image = self.transform_img(image)
-
+        #
+        print(idx)
         if self.split == DatasetSplit.TEST and mask_path is not None:
             mask = PIL.Image.open(mask_path)
             mask = self.transform_mask(mask)
@@ -125,29 +127,41 @@ class MVTecDataset(torch.utils.data.Dataset):
 
             imgpaths_per_class[classname] = {}
             maskpaths_per_class[classname] = {}
-
+            
+            # sort the anomaly types to ensure the order is consistent
+            # 遍历每种异常类型
             for anomaly in anomaly_types:
+                # 构建异常样本的完整路径
                 anomaly_path = os.path.join(classpath, anomaly)
+                # 获取并排序该异常类型下的所有文件
                 anomaly_files = sorted(os.listdir(anomaly_path))
+                # 保存每个类别下每种异常类型的所有图片路径
                 imgpaths_per_class[classname][anomaly] = [
                     os.path.join(anomaly_path, x) for x in anomaly_files
                 ]
 
-                if self.split == DatasetSplit.TEST and anomaly != "good":
+                # 如果是测试集且不是正常样本，则需要加载对应的mask
+                if self.split == DatasetSplit.TEST and anomaly not in ["good", "fail"]: #增加不需要读取fail文件夹的groundtruth,ground truth用于测试像素级准确率。
+                    # 构建mask的完整路径
                     anomaly_mask_path = os.path.join(maskpath, anomaly)
+                    # 获取并排序该异常类型下的所有mask文件
                     anomaly_mask_files = sorted(os.listdir(anomaly_mask_path))
+                    # 保存每个类别下每种异常类型的所有mask路径
                     maskpaths_per_class[classname][anomaly] = [
                         os.path.join(anomaly_mask_path, x) for x in anomaly_mask_files
                     ]
                 else:
+                    # 对于训练集或正常样本，mask设为None
                     maskpaths_per_class[classname]["good"] = None
-
+    
         data_to_iterate = []
         for classname in sorted(imgpaths_per_class.keys()):
             for anomaly in sorted(imgpaths_per_class[classname].keys()):
+                # skip good images in test split
                 for i, image_path in enumerate(imgpaths_per_class[classname][anomaly]):
+                    
                     data_tuple = [classname, anomaly, image_path]
-                    if self.split == DatasetSplit.TEST and anomaly != "good":
+                    if self.split == DatasetSplit.TEST and anomaly not in ["good", "fail"]: #增加不需要读取fail文件夹的groundtruth,ground truth用于测试像素级准确率。
                         data_tuple.append(maskpaths_per_class[classname][anomaly][i])
                     else:
                         data_tuple.append(None)

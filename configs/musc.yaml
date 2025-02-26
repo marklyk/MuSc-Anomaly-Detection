@@ -1,8 +1,8 @@
 datasets:
   dataset_name: 'mvtec_ad'  # choice ['mvtec_ad', 'visa']
   data_path: ./data/mvtec_anomaly_detection/
-  class_name: 'ALL'
-  img_resize: 518
+  class_name: 'mydoc'
+  img_resize: 336
   divide_num: 1
 models:
   backbone_name: 'ViT-L-14-336'
@@ -13,9 +13,9 @@ models:
 device: 0
 testing:
   output_dir: 'output'
-  vis: False
-  vis_type: single_norm # choice ['single_norm', 'whole_norm']
-  save_excel: False
+  vis: true
+  vis_type: whole # choice ['single_norm', 'whole_norm']
+  save_excel: true
 
 
 # models['backbone_name'] choice:

@@ -306,6 +306,7 @@ class Transformer(nn.Module):
         self.layers = layers
         self.grad_checkpointing = False
 
+        #  NOTE: this is a custom implementation of the ResidualAttentionBlock
         self.resblocks = nn.ModuleList([
             ResidualAttentionBlock(
                 width, heads, mlp_ratio, ls_init_value=ls_init_value, act_layer=act_layer, norm_layer=norm_layer,
@@ -553,7 +554,7 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x: torch.Tensor, out_layers: list, gt_mask=None):
 
-        # to patches - whether to use dual patchnorm - https://arxiv.org/abs/2302.01327v1
+        # to patches - whether to use dual patchnorm - https://arxiv.org/abs/2302.01327v1 有助于提高分类精度
         if self.input_patchnorm:
             # einops - rearrange(x, 'b c (h p1) (w p2) -> b (h w) (c p1 p2)')
             x = x.reshape(x.shape[0], x.shape[1], self.grid_size[0], self.patch_size[0], self.grid_size[1],

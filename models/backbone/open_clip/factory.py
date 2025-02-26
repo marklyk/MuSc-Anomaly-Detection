@@ -122,8 +122,10 @@ def create_model(
         output_dict: Optional[bool] = None,
         require_pretrained: bool = False,
 ):
+    
     has_hf_hub_prefix = model_name.startswith(HF_HUB_PREFIX)
     if has_hf_hub_prefix:
+        # load model config from HF model hub
         model_id = model_name[len(HF_HUB_PREFIX):]
         checkpoint_path = download_pretrained_from_hf(model_id, cache_dir=cache_dir)
         config_path = download_pretrained_from_hf(model_id, filename='open_clip_config.json', cache_dir=cache_dir)
@@ -133,6 +135,7 @@ def create_model(
         pretrained_cfg = config['preprocess_cfg']
         model_cfg = config['model_cfg']
     else:
+        # load model config from local file
         model_name = model_name.replace('/', '-')  # for callers using old naming with / in ViT names
         checkpoint_path = None
         pretrained_cfg = {}

@@ -13,7 +13,7 @@ import datasets.btad as btad
 from datasets.btad import _CLASSNAMES as _CLASSNAMES_btad
 
 import models.backbone.open_clip as open_clip
-import models.backbone._backbones as _backbones
+import models.backbone._backbones as _backbones  # this related to xFormers
 from models.modules._LNAMD import LNAMD
 from models.modules._MSM import MSM
 from models.modules._RsCIN import RsCIN
@@ -28,7 +28,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
+
 class MuSc():
+    # MuSc: Multi-scale Scoring for Anomaly Detection
     def __init__(self, cfg, seed=0):
         self.cfg = cfg
         self.seed = seed
@@ -99,11 +101,12 @@ class MuSc():
         if self.vis_type == 'single_norm':
             # normalized per image
             for i, path in enumerate(image_path_list):
-                anomaly_type = path.split('/')[-2]
-                img_name = path.split('/')[-1]
+                anomaly_type = path.split('\\')[-2]
+                img_name = path.split('\\')[-1]
                 if anomaly_type not in ['good', 'Normal', 'ok'] and gt_list[i] != 0:
-                    save_path = os.path.join(self.output_dir, category, anomaly_type)
+                    save_path = os.path.join(self.output_dir, category)
                     os.makedirs(save_path, exist_ok=True)
+                    img_name= anomaly_type +'_'+img_name
                     save_path = os.path.join(save_path, img_name)
                     anomaly_map = pr_px[i].squeeze()
                     anomaly_map = normalization01(anomaly_map)*255
@@ -113,10 +116,11 @@ class MuSc():
             # normalized all image
             pr_px = normalization01(pr_px)
             for i, path in enumerate(image_path_list):
-                anomaly_type = path.split('/')[-2]
-                img_name = path.split('/')[-1]
-                save_path = os.path.join(self.output_dir, category, anomaly_type)
+                anomaly_type = path.split('\\')[-2]
+                img_name = path.split('\\')[-1]
+                save_path = os.path.join(self.output_dir, category)
                 os.makedirs(save_path, exist_ok=True)
+                img_name= anomaly_type +'_'+img_name
                 save_path = os.path.join(save_path, img_name)
                 anomaly_map = pr_px[i].squeeze()
                 anomaly_map *= 255
@@ -151,6 +155,7 @@ class MuSc():
             subset_num = len(test_dataset)
             dataset_num += subset_num
             start_time = time.time()
+            #进度条显示器，tpdm
             for image_info in tqdm(test_dataloader):
             # for image_info in test_dataloader:
                 if isinstance(image_info, dict):
@@ -170,10 +175,15 @@ class MuSc():
                         patch_tokens_all = self.dino_model.get_intermediate_layers(x=input_image, n=max(self.features_list))
                         image_features = self.dino_model(input_image)
                         patch_tokens = [patch_tokens_all[l-1].cpu() for l in self.features_list]
-                    else: # clip
+                    else: 
+                        # clip 它是基于 Python 的，用于实现 CLIP（Contrastive Language-Image Pre-training）模型的库。
+                        # CLIP 模型是由斯坦福大学的研究者提出的一种多模态学习方法，它可以理解图像内容与自然语言描述之间的关联。
+                        # 需要理解作用
                         image_features, patch_tokens = self.clip_model.encode_image(input_image, self.features_list)
+                        # 需要理解作用 - Normalize the image features
                         image_features /= image_features.norm(dim=-1, keepdim=True)
                         patch_tokens = [patch_tokens[l].cpu() for l in range(len(self.features_list))]
+                # save the image features 
                 image_features = [image_features[bi].squeeze().cpu().numpy() for bi in range(image_features.shape[0])]
                 class_tokens.extend(image_features)
                 patch_tokens_list.append(patch_tokens)  # (B, L+1, C)
@@ -202,16 +212,24 @@ class MuSc():
                 print('LNAMD-{}: {}ms per image'.format(r, (end_time-start_time)*1000/subset_num))
 
                 # MSM
+                # 初始化一个空的双精度Tensor用于存储各层的异常图
                 anomaly_maps_l = torch.tensor([]).double()
                 start_time = time.time()
                 for l in Z_layers.keys():
-                    # different layers
+                    # 遍历不同的特征层
+                    # 将当前层的所有特征在batch维度上拼接，并移至GPU
                     Z = torch.cat(Z_layers[l], dim=0).to(self.device) # (N, L, C)
                     print('layer-{} mutual scoring...'.format(l))
+                    # 使用互信息评分模块(MSM)计算异常分数
+                    # topmin_min和topmin_max用于控制评分的阈值范围
                     anomaly_maps_msm = MSM(Z=Z, device=self.device, topmin_min=0, topmin_max=0.3)
+                    # 将当前层的异常图添加到总的异常图中
                     anomaly_maps_l = torch.cat((anomaly_maps_l, anomaly_maps_msm.unsqueeze(0).cpu()), dim=0)
+                    # 清理GPU缓存
                     torch.cuda.empty_cache()
+                # 对所有层的异常图取平均
                 anomaly_maps_l = torch.mean(anomaly_maps_l, 0)
+                # 将不同r值对应的异常图存储起来
                 anomaly_maps_r = torch.cat((anomaly_maps_r, anomaly_maps_l.unsqueeze(0)), dim=0)
                 end_time = time.time()
                 print('MSM: {}ms per image'.format((end_time-start_time)*1000/subset_num))

@@ -187,8 +187,9 @@ class CLIP(nn.Module):
     ):
         super().__init__()
         self.output_dict = output_dict
+        # vision tower
         self.visual = _build_vision_tower(embed_dim, vision_cfg, quick_gelu, cast_dtype)
-
+        # text tower
         text = _build_text_tower(embed_dim, text_cfg, quick_gelu, cast_dtype)
         self.transformer = text.transformer
         self.vocab_size = text.vocab_size
@@ -210,6 +211,7 @@ class CLIP(nn.Module):
         self.transformer.grad_checkpointing = enable
 
     def encode_image(self, image, out_layers, normalize=False, gt_mask=None):
+        # use checkpointing for the vision tower
         features = self.visual(image, out_layers, gt_mask=gt_mask)
         return F.normalize(features, dim=-1) if normalize else features
 
@@ -340,7 +342,7 @@ def build_model_from_openai_state_dict(
         cast_dtype=torch.float16,
 ):
     vit = "visual.proj" in state_dict
-
+    # detect vision tower type
     if vit:
         vision_width = state_dict["visual.conv1.weight"].shape[0]
         vision_layers = len(

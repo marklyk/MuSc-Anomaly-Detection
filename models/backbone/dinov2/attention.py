@@ -16,7 +16,7 @@ from torch import nn
 
 logger = logging.getLogger("dinov2")
 
-
+# this is where xFormers is not available
 try:
     from xformers.ops import memory_efficient_attention, unbind, fmha
 
